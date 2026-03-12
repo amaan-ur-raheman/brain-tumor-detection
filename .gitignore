@@ -1,4 +1,118 @@
-# Python-generated files
+# Python
+__pycache__/
+*.py[oc]
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+wheels/
+*.egg-info
+*.egg
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.conda/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+.jupyter/
+*.nbconvert.ipynb
+
+# PyTorch
+*.pth
+*.pt
+*.ckpt
+checkpoints/
+lightning_logs/
+
+# ML/Data
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.joblib
+*.npy
+*.npz
+data/raw/
+data/processed/
+models/
+logs/
+runs/
+wandb/
+mlruns/
+.tensorboard/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.code-workspace
+
+# Environment
+.env
+.env.local
+*.env
+
+# Firebase
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+
+# UV
+uv.lock
+
+# Misc
+*.log
+*.tmp
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Data directories (do not commit large datasets)
+data/
+
+# macOS files
+.DS_Store
+
+# VS Code settings
+.vscode/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs and outputs
+logs/
+*.log
+
+# Model weights and artifacts
+*.h5
+*.pt
+*.ckpt
+
+# Python cache and eggs
 __pycache__/
 *.py[oc]
 build/
@@ -6,5 +120,3 @@ dist/
 wheels/
 *.egg-info
 
-# Virtual environments
-.venv
