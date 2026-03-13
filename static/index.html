@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Brain Tumor Classifier</title>
+        <link
+            href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            :root {
+                --bg: #0a0e14;
+                --surface: #111620;
+                --border: #1e2736;
+                --accent: #4fc3f7;
+                --accent2: #e040fb;
+                --text: #e8edf5;
+                --muted: #556070;
+                --success: #69f0ae;
+                --warn: #ffd740;
+                --danger: #ff5252;
+            }
+
+            body {
+                font-family: "DM Sans", sans-serif;
+                background: var(--bg);
+                color: var(--text);
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 48px 20px;
+            }
+
+            header {
+                text-align: center;
+                margin-bottom: 48px;
+            }
+
+            .tag {
+                font-family: "DM Mono", monospace;
+                font-size: 11px;
+                letter-spacing: 0.15em;
+                color: var(--accent);
+                text-transform: uppercase;
+                margin-bottom: 12px;
+            }
+
+            h1 {
+                font-size: clamp(28px, 5vw, 42px);
+                font-weight: 300;
+                letter-spacing: -0.02em;
+                line-height: 1.15;
+            }
+
+            h1 span {
+                color: var(--accent);
+                font-weight: 500;
+            }
+
+            .subtitle {
+                color: var(--muted);
+                font-size: 15px;
+                margin-top: 10px;
+            }
+
+            .card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                width: 100%;
+                max-width: 560px;
+                overflow: hidden;
+            }
+
+            /* Drop zone */
+            .drop-zone {
+                padding: 48px 32px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 14px;
+                cursor: pointer;
+                border-bottom: 1px solid var(--border);
+                transition: background 0.2s;
+                position: relative;
+            }
+
+            .drop-zone:hover,
+            .drop-zone.dragover {
+                background: #161d2a;
+            }
+
+            .drop-zone input[type="file"] {
+                position: absolute;
+                inset: 0;
+                opacity: 0;
+                cursor: pointer;
+                width: 100%;
+                height: 100%;
+            }
+
+            .drop-icon {
+                width: 52px;
+                height: 52px;
+                border: 1.5px solid var(--border);
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 22px;
+            }
+
+            .drop-label {
+                font-size: 15px;
+                color: var(--muted);
+                text-align: center;
+            }
+            .drop-label strong {
+                color: var(--accent);
+                font-weight: 500;
+            }
+
+            .drop-hint {
+                font-family: "DM Mono", monospace;
+                font-size: 11px;
+                color: var(--muted);
+                letter-spacing: 0.05em;
+            }
+
+            /* Preview */
+            #preview-wrap {
+                display: none;
+                padding: 24px 32px;
+                border-bottom: 1px solid var(--border);
+                gap: 20px;
+                align-items: center;
+            }
+
+            #preview-wrap.visible {
+                display: flex;
+            }
+
+            #preview {
+                width: 80px;
+                height: 80px;
+                border-radius: 10px;
+                object-fit: cover;
+                border: 1px solid var(--border);
+                flex-shrink: 0;
+            }
+
+            .preview-meta {
+                flex: 1;
+                min-width: 0;
+            }
+            .preview-name {
+                font-size: 13px;
+                font-weight: 500;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .preview-size {
+                font-size: 12px;
+                color: var(--muted);
+                margin-top: 3px;
+            }
+
+            .btn-clear {
+                background: none;
+                border: 1px solid var(--border);
+                color: var(--muted);
+                border-radius: 8px;
+                padding: 6px 12px;
+                font-size: 12px;
+                cursor: pointer;
+                transition:
+                    border-color 0.15s,
+                    color 0.15s;
+                font-family: inherit;
+            }
+            .btn-clear:hover {
+                border-color: var(--danger);
+                color: var(--danger);
+            }
+
+            /* Actions */
+            .actions {
+                padding: 20px 32px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .btn-predict {
+                width: 100%;
+                background: var(--accent);
+                color: #000;
+                border: none;
+                border-radius: 10px;
+                padding: 14px;
+                font-size: 15px;
+                font-weight: 500;
+                cursor: pointer;
+                font-family: inherit;
+                transition:
+                    opacity 0.2s,
+                    transform 0.1s;
+            }
+
+            .btn-predict:hover:not(:disabled) {
+                opacity: 0.9;
+                transform: translateY(-1px);
+            }
+            .btn-predict:disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
+                transform: none;
+            }
+            .btn-predict.loading {
+                opacity: 0.7;
+            }
+
+            /* Results */
+            #results {
+                display: none;
+                padding: 28px 32px;
+            }
+            #results.visible {
+                display: block;
+            }
+
+            .result-header {
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                margin-bottom: 20px;
+            }
+
+            .result-label {
+                font-size: 12px;
+                color: var(--muted);
+                font-family: "DM Mono", monospace;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+            }
+
+            .result-prediction {
+                font-size: 26px;
+                font-weight: 500;
+                letter-spacing: -0.01em;
+                margin-top: 4px;
+            }
+
+            .result-prediction.glioma {
+                color: var(--danger);
+            }
+            .result-prediction.meningioma {
+                color: var(--warn);
+            }
+            .result-prediction.pituitary {
+                color: var(--accent2);
+            }
+            .result-prediction.no_tumor {
+                color: var(--success);
+            }
+
+            .result-conf {
+                font-family: "DM Mono", monospace;
+                font-size: 28px;
+                font-weight: 500;
+            }
+
+            .bars {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                margin-top: 4px;
+            }
+
+            .bar-row {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .bar-name {
+                font-size: 12px;
+                color: var(--muted);
+                width: 90px;
+                flex-shrink: 0;
+                font-family: "DM Mono", monospace;
+            }
+
+            .bar-track {
+                flex: 1;
+                height: 6px;
+                background: var(--border);
+                border-radius: 99px;
+                overflow: hidden;
+            }
+
+            .bar-fill {
+                height: 100%;
+                border-radius: 99px;
+                background: var(--accent);
+                transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+
+            .bar-fill.glioma {
+                background: var(--danger);
+            }
+            .bar-fill.meningioma {
+                background: var(--warn);
+            }
+            .bar-fill.pituitary {
+                background: var(--accent2);
+            }
+            .bar-fill.no_tumor {
+                background: var(--success);
+            }
+
+            .bar-pct {
+                font-family: "DM Mono", monospace;
+                font-size: 12px;
+                color: var(--muted);
+                width: 44px;
+                text-align: right;
+                flex-shrink: 0;
+            }
+
+            /* Error */
+            #error {
+                display: none;
+                padding: 16px 32px;
+                background: #1a0e0e;
+                border-top: 1px solid #2d1515;
+                color: var(--danger);
+                font-size: 13px;
+            }
+            #error.visible {
+                display: block;
+            }
+
+            .disclaimer {
+                margin-top: 28px;
+                font-size: 12px;
+                color: var(--muted);
+                text-align: center;
+                max-width: 420px;
+                line-height: 1.6;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div class="tag">Deep Learning · MRI Analysis</div>
+            <h1>Brain Tumor<br /><span>Classifier</span></h1>
+            <p class="subtitle">
+                Upload an MRI scan to get a classification prediction
+            </p>
+        </header>
+
+        <div class="card">
+            <!-- Drop zone -->
+            <div class="drop-zone" id="dropZone">
+                <input type="file" id="fileInput" accept="image/*" />
+                <div class="drop-icon">🧠</div>
+                <div class="drop-label">
+                    <strong>Click to upload</strong> or drag and drop
+                </div>
+                <div class="drop-hint">PNG · JPG · JPEG</div>
+            </div>
+
+            <!-- Preview -->
+            <div id="preview-wrap">
+                <img id="preview" src="" alt="preview" />
+                <div class="preview-meta">
+                    <div class="preview-name" id="fileName">—</div>
+                    <div class="preview-size" id="fileSize">—</div>
+                </div>
+                <button class="btn-clear" id="clearBtn">Remove</button>
+            </div>
+
+            <!-- Predict button -->
+            <div class="actions">
+                <button class="btn-predict" id="predictBtn" disabled>
+                    Classify MRI
+                </button>
+            </div>
+
+            <!-- Results -->
+            <div id="results">
+                <div class="result-header">
+                    <div>
+                        <div class="result-label">Prediction</div>
+                        <div class="result-prediction" id="predLabel">—</div>
+                    </div>
+                    <div class="result-conf" id="predConf">—</div>
+                </div>
+                <div class="bars" id="bars"></div>
+            </div>
+
+            <!-- Error -->
+            <div id="error"></div>
+        </div>
+
+        <p class="disclaimer">
+            For research purposes only. Not a medical device. Always consult a
+            qualified radiologist for clinical decisions.
+        </p>
+
+        <script>
+            const dropZone = document.getElementById("dropZone");
+            const fileInput = document.getElementById("fileInput");
+            const previewWrap = document.getElementById("preview-wrap");
+            const preview = document.getElementById("preview");
+            const fileName = document.getElementById("fileName");
+            const fileSize = document.getElementById("fileSize");
+            const clearBtn = document.getElementById("clearBtn");
+            const predictBtn = document.getElementById("predictBtn");
+            const results = document.getElementById("results");
+            const predLabel = document.getElementById("predLabel");
+            const predConf = document.getElementById("predConf");
+            const barsDiv = document.getElementById("bars");
+            const errorDiv = document.getElementById("error");
+
+            let selectedFile = null;
+            let lastObjectUrl = null;
+
+            function formatBytes(bytes) {
+                if (bytes < 1024) return bytes + " B";
+                if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+                return (bytes / 1048576).toFixed(1) + " MB";
+            }
+
+            function setFile(file) {
+                if (!file || !file.type.startsWith("image/")) return;
+                if (lastObjectUrl) {
+                    if (lastObjectUrl) {
+                        URL.revokeObjectURL(lastObjectUrl);
+                    }
+                    const url = URL.createObjectURL(file);
+                    preview.src = url;
+                    lastObjectUrl;
+                    selectedFile = file;
+                    lastObjectUrl = URL.createObjectURL(file);
+                    preview.src = lastObjectUrl;
+                    fileName.textContent = file.name;
+                    fileSize.textContent = formatBytes(file.size);
+                    if (lastObjectUrl) {
+                        URL.revokeObjectURL(lastObjectUrl);
+                        lastObjectUrl = null;
+                    }
+                    preview.src = "";
+                    previewWrap.classList.add("visible");
+                    predictBtn.disabled = false;
+                    hideResults();
+                }
+            }
+
+            function clearFile() {
+                if (lastObjectUrl) {
+                    URL.revokeObjectURL(lastObjectUrl);
+                    lastObjectUrl = null;
+                }
+                selectedFile = null;
+                fileInput.value = "";
+                previewWrap.classList.remove("visible");
+                predictBtn.disabled = true;
+                hideResults();
+            }
+
+            function hideResults() {
+                results.classList.remove("visible");
+                errorDiv.classList.remove("visible");
+            }
+
+            function showError(msg) {
+                errorDiv.textContent = msg;
+                errorDiv.classList.add("visible");
+                results.classList.remove("visible");
+            }
+
+            fileInput.addEventListener("change", () =>
+                setFile(fileInput.files[0]),
+            );
+            clearBtn.addEventListener("click", clearFile);
+
+            dropZone.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                dropZone.classList.add("dragover");
+            });
+
+            dropZone.addEventListener("dragleave", () =>
+                dropZone.classList.remove("dragover"),
+            );
+            dropZone.addEventListener("drop", (e) => {
+                e.preventDefault();
+                dropZone.classList.remove("dragover");
+                setFile(e.dataTransfer.files[0]);
+            });
+
+            predictBtn.addEventListener("click", async () => {
+                if (!selectedFile) return;
+
+                predictBtn.disabled = true;
+                predictBtn.textContent = "Classifying...";
+                predictBtn.classList.add("loading");
+                hideResults();
+
+                const formData = new FormData();
+                formData.append("file", selectedFile);
+
+                try {
+                    const res = await fetch("/predict", {
+                        method: "POST",
+                        body: formData,
+                    });
+                    const data = await res.json();
+
+                    if (!res.ok || data.error) {
+                        showError(data.error || "Server error");
+                        return;
+                    }
+
+                    // Top prediction
+                    const cls = data.prediction.replace("_", " ");
+                    predLabel.textContent =
+                        cls.charAt(0).toUpperCase() + cls.slice(1);
+                    predLabel.className =
+                        "result-prediction " + data.prediction;
+                    predConf.textContent = data.confidence.toFixed(1) + "%";
+
+                    // Bars
+                    barsDiv.innerHTML = "";
+                    data.all.forEach((item) => {
+                        const row = document.createElement("div");
+                        row.className = "bar-row";
+                        row.innerHTML = `
+                  <span class="bar-name">${item.class.replace("_", " ")}</span>
+                  <div class="bar-track">
+                    <div class="bar-fill ${item.class}" style="width:0%"></div>
+                  </div>
+                  <span class="bar-pct">${item.confidence.toFixed(1)}%</span>
+                `;
+                        barsDiv.appendChild(row);
+                        // Animate after paint
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                row.querySelector(".bar-fill").style.width =
+                                    item.confidence + "%";
+                            });
+                        });
+                    });
+
+                    results.classList.add("visible");
+                } catch (err) {
+                    showError(
+                        "Could not reach the server. Make sure app.py is running on port 5000.",
+                    );
+                } finally {
+                    predictBtn.disabled = false;
+                    predictBtn.textContent = "Classify MRI";
+                    predictBtn.classList.remove("loading");
+                }
+            });
+
+            window.addEventListener("beforeunload", () => {
+                if (lastObjectUrl) {
+                    URL.revokeObjectURL(lastObjectUrl);
+                }
+            });
+        </script>
+    </body>
+</html>
