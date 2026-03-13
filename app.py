@@ -1,74 +1,78 @@
-import streamlit as st
+import io
 import torch
 from torch import nn
 from torchvision import transforms
 from PIL import Image
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
-st.set_page_config(
-    page_title="NeuroScan",
-    page_icon="🧠",
-    layout="centered"
-)
+app = Flask(__name__)
+CORS(app)
 
-st.title("NeuroScan")
 
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-
-@st.cache_resource
-def load_model():
-    model = nn.Sequential(
-        nn.Conv2d(3, 32, 3, 1, 1), nn.ReLU(), nn.MaxPool2d(2),
-        nn.Conv2d(32, 64, 3, 1, 1), nn.ReLU(), nn.MaxPool2d(2),
-        nn.Conv2d(64, 128, 3, 1, 1), nn.ReLU(), nn.MaxPool2d(2),
+def build_model():
+    return nn.Sequential(
+        nn.Conv2d(3, 32, 3, 1, 1), nn.ReLU(), nn.BatchNorm2d(32), nn.MaxPool2d(2), nn.Dropout2d(0.25),
+        nn.Conv2d(32, 64, 3, 1, 1), nn.ReLU(), nn.BatchNorm2d(64), nn.MaxPool2d(2), nn.Dropout2d(0.25),
+        nn.Conv2d(64, 128, 3, 1, 1), nn.ReLU(), nn.BatchNorm2d(128), nn.MaxPool2d(2), nn.Dropout2d(0.25),
+        nn.Conv2d(128, 256, 3, 1, 1), nn.ReLU(), nn.BatchNorm2d(256), nn.MaxPool2d(2), nn.Dropout2d(0.25),
         nn.Flatten(),
-        nn.Linear(128 * 16 * 16, 256), nn.ReLU(), nn.Dropout(0.5),
-        nn.Linear(256, 4)
-    ).to(device)
+        nn.Linear(256 * 14 * 14, 128), nn.ReLU(), nn.Dropout(0.1),
+        nn.Linear(128, 4)
+    )
 
-    model.load_state_dict(torch.load("brain_tumor_model.pth", map_location=device))
-    model.eval()
-    return model
 
-model = load_model()
+CLASS_NAMES = ['glioma', 'meningioma', 'no_tumor', 'pituitary']
+device = torch.device('cpu')  
 
-tf = transforms.Compose([
-    transforms.Resize((128, 128)),
+model = build_model()
+model.load_state_dict(torch.load('brain_tumor_model.pth', map_location=device, weights_only=True))
+model.eval()
+print('Model loaded successfully')
+
+
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
-class_names = ['Glioma', 'Meningioma', 'No Tumor', 'Pituitary']
 
-uploaded_file = st.file_uploader("Upload an MRI scan", type=["jpg", "png"])
+@app.route('/')
+def index():
+    return app.send_static_file('index.html')
 
-if uploaded_file:
-    image = Image.open(uploaded_file).convert('RGB')
-    st.image(image, caption="Uploaded MRI Scan")
+@app.route('/predict', methods=['POST'])
+def predict():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
 
-    img_tensor = tf(image).unsqueeze(0).to(device)
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'Empty filename'}), 400
+
+    try:
+        img = Image.open(io.BytesIO(file.read())).convert('RGB')
+    except Exception:
+        return jsonify({'error': 'Invalid image file'}), 400
+
+    tensor = transform(img).unsqueeze(0)   # [1, 3, 224, 224]
 
     with torch.no_grad():
-        logits = model(img_tensor)
-        probs = torch.softmax(logits, dim=1)[0]
-        pred = probs.argmax().item()
+        logits = model(tensor)
+        probs  = torch.softmax(logits, dim=1)[0]
 
-    prediction = class_names[pred]
+    results = [
+        {'class': CLASS_NAMES[i], 'confidence': round(probs[i].item() * 100, 2)}
+        for i in range(len(CLASS_NAMES))
+    ]
+    results.sort(key=lambda x: x['confidence'], reverse=True)
 
-    st.divider()
-    st.subheader("Prediction")
+    return jsonify({
+        'prediction': results[0]['class'],
+        'confidence': results[0]['confidence'],
+        'all': results
+    })
 
-    if prediction == "No Tumor":
-        st.success(f"**{prediction}**")
-    else:
-        st.error(f"**{prediction}**")
-
-    st.divider()
-    st.subheader("Class Probabilities")
-
-    for i, name in enumerate(class_names):
-        prob = probs[i].item()
-        st.write(f"{name}: {prob:.1%}")
-        st.progress(prob, text="")
-
-st.divider()
-st.caption("For research use only. Not a substitute for professional medical diagnosis.")
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
