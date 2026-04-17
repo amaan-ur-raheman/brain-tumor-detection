@@ -444,27 +444,20 @@
 
             function setFile(file) {
                 if (!file || !file.type.startsWith("image/")) return;
+                
+                // Clean up previous object URL
                 if (lastObjectUrl) {
-                    if (lastObjectUrl) {
-                        URL.revokeObjectURL(lastObjectUrl);
-                    }
-                    const url = URL.createObjectURL(file);
-                    preview.src = url;
-                    lastObjectUrl;
-                    selectedFile = file;
-                    lastObjectUrl = URL.createObjectURL(file);
-                    preview.src = lastObjectUrl;
-                    fileName.textContent = file.name;
-                    fileSize.textContent = formatBytes(file.size);
-                    if (lastObjectUrl) {
-                        URL.revokeObjectURL(lastObjectUrl);
-                        lastObjectUrl = null;
-                    }
-                    preview.src = "";
-                    previewWrap.classList.add("visible");
-                    predictBtn.disabled = false;
-                    hideResults();
+                    URL.revokeObjectURL(lastObjectUrl);
                 }
+                
+                selectedFile = file;
+                lastObjectUrl = URL.createObjectURL(file);
+                preview.src = lastObjectUrl;
+                fileName.textContent = file.name;
+                fileSize.textContent = formatBytes(file.size);
+                previewWrap.classList.add("visible");
+                predictBtn.disabled = false;
+                hideResults();
             }
 
             function clearFile() {

@@ -27,7 +27,6 @@ env/
 *.nbconvert.ipynb
 
 # PyTorch
-*.pth
 *.pt
 *.ckpt
 checkpoints/
